@@ -9,74 +9,52 @@
 
         ;Los pares colocarlos en la dirección 0300H y los impares colocarlos a partir de la dirección 0320H. 
 
-        XOR DI, DI ; Limpiar DI, se ocupará para manejar el arreglo 
-        XOR SI, SI ; Limpiar SI, se ocupará para manejar los registros impares
-        mov bx, 2d; Se ocupará para hacer la división entre 2 y comprobar si es par o no
+        XOR DI, DI ; Limpiar DI, se ocupará para manejar el arreglo general
+        XOR SI, SI ; Limpiar SI, se ocupará para manejar los registros pares
+        XOR BP, BP ; Limpiar BP, se ocupará para manejar los registros impares
 
-        call Impar
-        ;Se vuelven a limpiar DI y SI para utilizarse en la siguiente subrutina
-        XOR DI, DI 
-        XOR SI, SI
-
-        call Par
+        call For ;Se manda a llamar a la función
         
         int 20h
         
 
         section .data
 
-        nums DB 1,2,3,4,5,6,7,8,9, 0xA ; Arreglo con números del 1 al 10 para pares e impares
+        nums DB 1,2,3,4,5,6,7,8,9,8, 0xA ; Arreglo con números dígitos con pares e impares
         ; Tipo DB para que sea de tamaño 1 byte
-        ;Se pone 0xA para ocuparla a posterior como una condición de paro
+        ;Se pone 0xA para ocuparla a posterior como una condición de paro o break
 
 ;Funciones
-Par:
-        MOV CL, [nums+DI]
-        MOV AX, CX
+For:
+        mov bx, 2d ;Se mueve 2d debido que este es el dato por el que se dividirá para ver si es par o no
+        Mov byte AL, [nums + DI] ;Se ueve como tipo byte a AL para realizarse la divisón ahí.
 
-        div bx 
-
-        cmp AH,0
-        jnz ProcesoPar ;Se ocupa jnz para saber que el valor AH es distinto de 0
+        cmp AL, 0xA ;Se verifica la condición de break
+        je end
         
-        cmp CX, 8AH ;Por alguna razón al llegar a la posición 10 en vez de guardar
-        ;0xA guarda 8A, y esto no ocurre con lo que es en la subrutina de impares
-        ;entonces se ocupa el 8A como punto de paro
-        Je end   
+        div bx ;División entre el registro+DI /2
 
-        INC DI 
-        jmp Par 
+        cmp DX,0d ;Primera verificación, se ve si el residuo es 0
+        je ProcesoPar ;Si es 0 se manda a llamar a la subrutina ProcesoPar
 
+        cmp DX,1d ;Segunda verificación, se ve si el residuo no es 0
+        je ProcesoImpar ;Si no es 0, se manda a llamar a la subrutina ProcesoImpar
 
-Impar:
-        MOV CL, [nums+DI] ;Se mueve a CL los valores del arreglo
-        MOV AX, CX ; Se mueve a AX debido que ahí se efectúa la división
-
-        div bx ;Bx tiene el valor de 2, así que se divide entre 2 esperando el residuo
-
-        cmp AH,0 ;se verifica que el residuo en AH sea 0, por lo tanto se guardarán los impares
-        Je ProcesoImpar ;Se manda a llamar la subrutina de proceso impar
-
-        cmp CX, 0xA ;Se ocupa esta comparación para hacer el break al encontrar 0xA
-        Je end   
-
-        INC DI ; Se incrementa DI en 1 para manejar el arreglo
-        jmp Impar ; Se repite hasta que se encuentre 0xA
-
+        jmp For;Como si fuese una función recursiva hasta que se cumpla la condición de break
 end:
-        ret ;regresa al main
-
-ProcesoImpar:
-        Mov AL, [nums+DI] ;Se mueve a AL lo que sería el valor impar
-        Mov [0320H+SI], AL ;Finalmente se mueve a la posición 320 + SI dicho valor
-        INC DI ;Se incrementa DI para que no ocurra un bucle
-        INC SI ;Se incrementa SI para rellenar posterior la siguiente posición de 320
-        jmp Impar ;Se vuelve a la subrutina de impares
+        ret ;Para retornar al main
 
 ProcesoPar:
-        Mov AL, [nums+DI] 
-        Mov [0300H+SI], AL
-        INC DI
-        INC SI
-        jmp Par
+        mov byte BL, [nums+DI] ;Se mueve a BL el dato debido que no se puede mover a 300h de forma directa
+        mov [300h+SI], BL ;Se mueve a 300H+SI
+        inc DI;Se incrementa DI debido que es el contador GENERAL con el que se maneja el arreglo
+        inc SI;Se incrementa SI debido que es el contador local para 300H
+        jmp For;Se regresa a la subrutina for
+
+ProcesoImpar:
+        mov byte BL, [nums+DI];Se mueve a BL el dato debido que no se puede mover a 320H de forma directa
+        mov [320h+BP], BL;Se mueve a 320H+BP
+        inc DI;Se incrementa DI debido que es el contador GENERAL con el que se maneja el arreglo
+        inc BP;Se incrementa BP debido que es el contador local para 320H
+        jmp For;Se regresa a la subrutina for
 
